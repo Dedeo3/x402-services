@@ -178,7 +178,7 @@ router.get('/creator/wrapped/:idCreator', getCreatorWrapped)
  *               gatewaySlug:
  *                 type: string
  *               paymentAmount:
- *                 type: string
+ *                 type: float
  *               paymentReceipt:
  *                 type: string
  *               description:
@@ -206,7 +206,7 @@ router.post('/creator/wrapped/:creatorId', createWrapped)
 // payment x402
 /**
  * @swagger
- * /{gatewaySlug}:
+ * /escrow/{gatewaySlug}:
  *   get:
  *     summary: Access a gateway endpoint (GET)
  *     tags: [PayrouteWithEscrow]
@@ -254,7 +254,7 @@ router.post('/creator/wrapped/:creatorId', createWrapped)
  *         description: Server Error
  *   post:
  *     summary: Access a gateway endpoint (POST)
- *     tags: [Payroute]
+ *     tags: [PayrouteWithEscrow]
  *     parameters:
  *       - in: path
  *         name: gatewaySlug
@@ -280,7 +280,7 @@ router.post('/creator/wrapped/:creatorId', createWrapped)
  *       500:
  *         description: Server Error
  */
-// router.all("/:gatewaySlug", getPayrouteWithEscrow)
+router.all("/escrow/:gatewaySlug", getPayrouteWithEscrow)
 
 
 /**

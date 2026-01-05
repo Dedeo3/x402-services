@@ -67,7 +67,7 @@ Creates a new wrapped content entry (gateway) for a creator.
     "originalUrl": "string",
     "methods": "string", // e.g., "GET,POST"
     "gatewaySlug": "string",
-    "paymentAmount": "string",
+    "paymentAmount": "float",
     "paymentReceipt": "string",
     "description": "string"
   }
@@ -94,31 +94,58 @@ Retrieves all wrapped methods for a specific creator.
 
 ## Payroute (Gateway) Endpoints
 
-### 6. Access Gateway (Direct Payment)
+### 6. Escrow Gateway Access
 
-Accesses the wrapped content. Requires payment verification via headers.
+Accesses the wrapped content via the Escrow flow. This endpoint verifies payments made through the Escrow smart contract.
 
-- **URL**: `/:gatewaySlug`
+- **URL**: `/escrow/:gatewaySlug`
 - **Method**: `GET` / `POST` / `...` (Matches `originalUrl` method)
 - **URL Parameters**:
   - `gatewaySlug` (string): The slug defined when creating wrapped content.
 - **Headers**:
-  - `x-payment-tx` (string, optional): The transaction hash of the direct payment (Mantle Testnet).
+  - `x-payment-tx` (string, optional): The transaction hash of the payment made to the Escrow contract's `createTx` function.
 - **Response**:
   - `200 OK`: Proxies the response from the `originalUrl`.
-  - `402 Payment Required`: If payment is missing or pending. Returns details needed to pay.
+  - `402 Payment Required`: If `x-payment-tx` is missing or invalid. Returns details needed to initiate the escrow payment interactively.
     ```json
     {
       "message": "Payment Required",
       "receiverAddress": "string",
-      "transactionId": "string",
-      "escrowAddress": "string", // If applicable
+      "transactionId": "string", // Created pending TX ID
+      "escrowAddress": "string",
       "amount": number,
       "currency": "MUSD",
       "chain": "MANTLE TESTNET",
       "requiredHeader": "x-payment-tx"
     }
     ```
-  - `404 Not Found`: Gateway slug not found or Transaction not found.
-  - `405 Method Not Allowed`: If the HTTP method is not allowed for this route.
+  - `404 Not Found`: Gateway slug or Transaction not found.
+  - `500 Internal Server Error`: Server configuration or upstream errors.
+
+### 7. Direct Gateway Access
+
+Accesses the wrapped content via Direct Payment flow. This endpoint verifies direct ERC20 transfers to the creator's wallet.
+
+- **URL**: `/:gatewaySlug`
+- **Method**: `GET` / `POST` / `...` (Matches `originalUrl` method)
+- **URL Parameters**:
+  - `gatewaySlug` (string): The slug defined when creating wrapped content.
+- **Headers**:
+  - `x-payment-tx` (string, optional): The transaction hash of the direct ERC20 transfer to the creator's wallet.
+- **Response**:
+  - `200 OK`: Proxies the response from the `originalUrl`.
+  - `402 Payment Required`: If `x-payment-tx` is missing or invalid.
+    ```json
+    {
+      "message": "Payment Required",
+      "receiverAddress": "string",
+      "transactionId": "string",
+      "escrowAddress": "string",
+      "amount": number,
+      "currency": "MUSD",
+      "chain": "MANTLE TESTNET",
+      "requiredHeader": "x-payment-tx"
+    }
+    ```
+  - `404 Not Found`: Gateway slug not found.
   - `500 Internal Server Error`
