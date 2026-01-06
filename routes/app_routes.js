@@ -1,7 +1,11 @@
 import express from 'express';
-import { registerCreator, getProfile, getCreatorAll, getCreatorWrapped, createWrapped, getPayroute, getPayrouteWithEscrow } from '../controller/app_controller.js';
+import { registerCreator, getProfile, getCreatorAll, getCreatorWrapped, createWrapped, getPayroute, getPayrouteWithEscrow, createAgent, getCreatorAgents, getAgentDetails, createAgentResource, getCreatorResources, attachResourceToAgent, getAgentResources, detachResourceFromAgent, callAIChat } from '../controller/app_controller.js';
 
 const router = express.Router();
+
+// ... existing routes ...
+
+// ... existing routes ...
 
 //creator needed
 
@@ -368,5 +372,284 @@ router.all("/:gatewaySlug", getPayroute);
 
 // router.get('/creator/find-by-wallet/:walletAddress', getProfileByWalletAddress);
 
+
+// Agent Management
+
+/**
+ * @swagger
+ * /creator/{creatorId}/agents:
+ *   post:
+ *     summary: Create a new AI Agent for a creator
+ *     tags: [Agent]
+ *     parameters:
+ *       - in: path
+ *         name: creatorId
+ *         schema:
+ *           type: integer
+ *         required: true
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - slug
+ *               - modelProvider
+ *               - modelName
+ *               - systemPrompt
+ *             properties:
+ *               name:
+ *                 type: string
+ *               slug:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               modelProvider:
+ *                 type: string
+ *                 enum: [openai, anthropic, local]
+ *               modelName:
+ *                 type: string
+ *               systemPrompt:
+ *                 type: string
+ *               pricePerHit:
+ *                 type: number
+ *               isActive:
+ *                 type: boolean
+ *     responses:
+ *       201:
+ *         description: Agent created
+ *       400:
+ *         description: Missing fields
+ *       409:
+ *         description: Slug exists
+ *       500:
+ *         description: Server error
+ *   get:
+ *     summary: List all agents for a creator
+ *     tags: [Agent]
+ *     parameters:
+ *       - in: path
+ *         name: creatorId
+ *         schema:
+ *           type: integer
+ *         required: true
+ *     responses:
+ *       200:
+ *         description: List of agents
+ *       500:
+ *         description: Server error
+ */
+router.post('/creator/:creatorId/agents', createAgent);
+router.get('/creator/:creatorId/agents', getCreatorAgents);
+
+/**
+ * @swagger
+ * /agent/{agentId}:
+ *   get:
+ *     summary: Get agent details
+ *     tags: [Agent]
+ *     parameters:
+ *       - in: path
+ *         name: agentId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         required: true
+ *     responses:
+ *       200:
+ *         description: Agent details
+ *       404:
+ *         description: Agent not found
+ *       500:
+ *         description: Server error
+ */
+router.get('/agent/:agentId', getAgentDetails);
+
+/**
+ * @swagger
+ * /agent/{agentId}/chat:
+ *   post:
+ *     summary: Chat with an AI Agent
+ *     tags: [Agent]
+ *     parameters:
+ *       - in: path
+ *         name: agentId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         required: true
+ *       - in: header
+ *         name: x-payment-tx
+ *         schema:
+ *           type: string
+ *         description: Direct Payment Transaction Hash (Bearer <txHash>)
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - message
+ *             properties:
+ *               message:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Chat response
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 response:
+ *                   type: string
+ *       400:
+ *         description: Missing message
+ *       500:
+ *         description: Server error
+ */
+router.post('/agent/:agentId/chat', callAIChat);
+
+// Agent Resources
+
+/**
+ * @swagger
+ * /creator/{creatorId}/resources:
+ *   post:
+ *     summary: Create a new resource for a creator
+ *     tags: [AgentResource]
+ *     parameters:
+ *       - in: path
+ *         name: creatorId
+ *         schema:
+ *           type: integer
+ *         required: true
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - type
+ *               - title
+ *               - content
+ *             properties:
+ *               type:
+ *                 type: string
+ *                 enum: [TEXT, LINK, SMART_CONTRACT]
+ *               title:
+ *                 type: string
+ *               content:
+ *                 type: string
+ *               metadata:
+ *                 type: object
+ *     responses:
+ *       201:
+ *         description: Resource created
+ *       400:
+ *         description: Missing fields
+ *       500:
+ *         description: Server error
+ *   get:
+ *     summary: List all resources for a creator
+ *     tags: [AgentResource]
+ *     parameters:
+ *       - in: path
+ *         name: creatorId
+ *         schema:
+ *           type: integer
+ *         required: true
+ *     responses:
+ *       200:
+ *         description: List of resources
+ *       500:
+ *         description: Server error
+ */
+router.post('/creator/:creatorId/resources', createAgentResource);
+router.get('/creator/:creatorId/resources', getCreatorResources);
+
+/**
+ * @swagger
+ * /agent/{agentId}/resources:
+ *   post:
+ *     summary: Attach a resource to an agent
+ *     tags: [AgentResource]
+ *     parameters:
+ *       - in: path
+ *         name: agentId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         required: true
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - resourceId
+ *             properties:
+ *               resourceId:
+ *                 type: string
+ *                 format: uuid
+ *     responses:
+ *       201:
+ *         description: Resource attached
+ *       409:
+ *         description: Already attached
+ *       500:
+ *         description: Server error
+ *   get:
+ *     summary: Get resources attached to an agent
+ *     tags: [AgentResource]
+ *     parameters:
+ *       - in: path
+ *         name: agentId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         required: true
+ *     responses:
+ *       200:
+ *         description: List of attached resources
+ *       500:
+ *         description: Server error
+ */
+router.post('/agent/:agentId/resources', attachResourceToAgent);
+router.get('/agent/:agentId/resources', getAgentResources);
+
+/**
+ * @swagger
+ * /agent/{agentId}/resources/{resourceId}:
+ *   delete:
+ *     summary: Detach a resource from an agent
+ *     tags: [AgentResource]
+ *     parameters:
+ *       - in: path
+ *         name: agentId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         required: true
+ *       - in: path
+ *         name: resourceId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         required: true
+ *     responses:
+ *       200:
+ *         description: Resource detached
+ *       404:
+ *         description: Linkage not found
+ *       500:
+ *         description: Server error
+ */
+router.delete('/agent/:agentId/resources/:resourceId', detachResourceFromAgent);
 
 export default router;

@@ -18,6 +18,8 @@ model Creator {
   id            Int           @id @default(autoincrement())
   walletAddress String        @unique
   assets        WrappedData[]
+  aiAgents      AIAgents[]
+  resources     AgentResource[]
   timestamp     DateTime @default(now())
 }
 
@@ -45,4 +47,61 @@ model transactions {
   amount        Float    @default(0) 
   status        String   @default("") 
   timestamp     DateTime @default(now())
+}
+
+enum ModelProvider {
+  openai
+  anthropic
+  gemini
+  qwen
+  deepseek
+}
+
+model AIAgents {
+  id            String        @id @default(uuid())
+  creatorId    Int
+  creator       Creator       @relation(fields: [creatorId], references: [id])
+  name          String
+  slug          String        @unique
+  description   String
+  modelProvider ModelProvider
+  modelName    String
+  systemPrompt String
+  pricePerHit Float
+  isActive     Boolean
+
+  resources     AgentResourceMap[]
+
+  createdAt    DateTime      @default(now())
+}
+
+enum ResourceType {
+  TEXT
+  LINK
+  SMART_CONTRACT
+}
+
+model AgentResource {
+  id            String        @id @default(uuid())
+  creatorId     Int
+  creator       Creator       @relation(fields: [creatorId], references: [id])
+
+  type          ResourceType
+  title         String
+  content       String        // text / url / contract address
+  metadata      Json?         // ABI, chainId, tags, dll
+
+  agents        AgentResourceMap[]
+
+  createdAt     DateTime      @default(now())
+}
+
+model AgentResourceMap {
+  agentId     String
+  resourceId  String
+
+  agent       AIAgents      @relation(fields: [agentId], references: [id])
+  resource    AgentResource  @relation(fields: [resourceId], references: [id])
+
+  @@id([agentId, resourceId])
 }
