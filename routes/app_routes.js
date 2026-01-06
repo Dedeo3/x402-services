@@ -652,7 +652,91 @@ router.get('/agent/:agentId/resources', getAgentResources);
  */
 router.delete('/agent/:agentId/resources/:resourceId', detachResourceFromAgent);
 
+/**
+ * @swagger
+ * /login/verify:
+ *   post:
+ *     summary: Verify login signature
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - walletAddress
+ *               - signature
+ *             properties:
+ *               walletAddress:
+ *                 type: string
+ *                 description: The user's wallet address
+ *               signature:
+ *                 type: string
+ *                 description: The cryptographic signature of the nonce
+ *               nonce:
+ *                 type: string
+ *                 description: Optional check for specific nonce reuse
+ *     responses:
+ *       200:
+ *         description: Login successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 walletAddress:
+ *                   type: string
+ *       400:
+ *         description: Missing fields or invalid signature format
+ *       401:
+ *         description: Invalid signature
+ *       402:
+ *         description: Nonce reuse detected
+ *       404:
+ *         description: Creator not found
+ *       500:
+ *         description: Server error
+ */
 router.post('/login/verify', loginVerify);
+
+/**
+ * @swagger
+ * /nonce/login:
+ *   post:
+ *     summary: Generate a nonce for login
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - walletAddress
+ *             properties:
+ *               walletAddress:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Nonce generated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 nonce:
+ *                   type: string
+ *                   description: Random nonce string to be signed
+ *       400:
+ *         description: Wallet address missing
+ *       404:
+ *         description: Creator not found
+ *       500:
+ *         description: Server error
+ */
 router.post('/nonce/login', nonce);
 
 export default router;
