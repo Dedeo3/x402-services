@@ -1,5 +1,5 @@
 import express from 'express';
-import { registerCreator, loginVerify, nonce, getProfile, getCreatorAll, getCreatorWrapped, createWrapped, getPayroute, getPayrouteWithEscrow, createAgent, getCreatorAgents, getAgentDetails, createAgentResource, getCreatorResources, attachResourceToAgent, getAgentResources, detachResourceFromAgent, callAIChat } from '../controller/app_controller.js';
+import { registerCreator, loginVerify, nonce, getProfile, getCreatorAll, getCreatorWrapped, createWrapped, getPayroute, getPayrouteWithEscrow, createAgent, getCreatorAgents, getAgentDetails, createAgentResource, getCreatorResources, attachResourceToAgent, getAgentResources, detachResourceFromAgent, callAIChat, escrowCallAIChat } from '../controller/app_controller.js';
 
 const router = express.Router();
 
@@ -469,6 +469,51 @@ router.get('/agent/:agentId', getAgentDetails);
 
 /**
  * @swagger
+ * /agent/escrow/{agentSlug}/chat:
+ *   post:
+ *     summary: Chat with an AI Agent using escrow
+ *     tags: [Agent Escrow]
+ *     parameters:
+ *       - in: path
+ *         name: agentSlug
+ *         schema:
+ *           type: string
+ *         required: true
+ *       - in: header
+ *         name: x-payment-tx
+ *         schema:
+ *           type: string
+ *         description: Direct Payment Transaction Hash (Bearer <txHash>)
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - message
+ *             properties:
+ *               message:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Chat response
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 response:
+ *                   type: string
+ *       400:
+ *         description: Missing message
+ *       500:
+ *         description: Server error
+ */
+router.post('/agent/escrow/:agentSlug/chat', escrowCallAIChat);
+
+/**
+ * @swagger
  * /agent/{agentSlug}/chat:
  *   post:
  *     summary: Chat with an AI Agent
@@ -513,7 +558,6 @@ router.get('/agent/:agentId', getAgentDetails);
 router.post('/agent/:agentSlug/chat', callAIChat);
 
 // Agent Resources
-
 /**
  * @swagger
  * /creator/{creatorId}/resources:
