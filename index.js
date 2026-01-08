@@ -37,7 +37,7 @@ const swaggerOptions = {
     servers: [
       {
         // url: process.env.BASE_URL,
-        url: `http://localhost:${PORT}`,
+        url: `https://x402-services.vercel.app/`,
       },
     ],
   },
