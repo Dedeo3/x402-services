@@ -1011,9 +1011,6 @@ export const nonce = async (req, res) => {
 export const loginVerify = async (req, res) => {
     const { walletAddress, signature } = req.body;
 
-    // Check if user provided 'nonce' in body to satisfy the specific 402 condition logic request
-    const providedNonce = req.body.nonce;
-
     if (!walletAddress || !signature) {
         return res.status(400).json({ message: "Wallet address and signature are required" });
     }
@@ -1023,44 +1020,30 @@ export const loginVerify = async (req, res) => {
             where: { walletAddress }
         });
 
-        if (!creator) {
-            return res.status(404).json({ message: "Creator not found" });
+        if (!creator || !creator.nonce) {
+            return res.status(404).json({ message: "Nonce not found. Please request nonce first." });
         }
 
         const dbNonce = creator.nonce;
 
-        // Specific logic regarding nonce reuse checking
-        if (providedNonce && providedNonce === dbNonce) {
-            return res.status(402).json({ message: "Creator already logged in using this nonce" });
+        // VERIFIKASI SIGNATURE
+        // recoveredAddress akan menghasilkan alamat wallet yang menandatangani dbNonce
+        const recoveredAddress = ethers.verifyMessage(dbNonce, signature);
+
+        if (recoveredAddress.toLowerCase() !== walletAddress.toLowerCase()) {
+            return res.status(401).json({ message: "Invalid signature: Address mismatch" });
         }
 
-        if (!dbNonce) {
-            return res.status(400).json({ message: "Nonce not generated for this user" });
-        }
-
-        // Verify Signature
-        try {
-            const recoveredAddress = ethers.verifyMessage(dbNonce, signature);
-
-            if (recoveredAddress.toLowerCase() !== walletAddress.toLowerCase()) {
-                return res.status(401).json({ message: "Invalid signature: Address mismatch" });
-            }
-        } catch (sigError) {
-            console.error("Signature verification failed:", sigError);
-            return res.status(400).json({ message: "Invalid signature format" });
-        }
-
-        // Update nonce after successful login
-        const newNonce = Math.floor(Math.random() * 1000000).toString();
-
+        // BERHASIL - Update nonce agar tidak bisa dipakai lagi (Replay Attack Prevention)
         await prisma.creator.update({
             where: { walletAddress },
-            data: { nonce: newNonce }
+            data: { nonce: Math.floor(Math.random() * 1000000).toString() }
         });
 
         return res.status(200).json({
             message: "Login successful",
-            walletAddress: walletAddress
+            walletAddress: walletAddress,
+            creatorId: creator.id
         });
 
     } catch (error) {

@@ -46,16 +46,15 @@ async function testLogin() {
     // 4. Sign the Nonce
     // The critical step: The wallet signs the message (nonce).
     // The output is a hex string (signature).
-    const signature = await wallet.signMessage(nonce);
+const signature = await wallet.signMessage(nonce.toString());
     console.log(`Generated Signature: ${signature}`);
 
     // 5. Verify Login
-    // Endpoint: POST /login/verify
     try {
         console.log("Verifying Login...");
         const loginRes = await axios.post(`${API_URL}/login/verify`, {
-            walletAddress: wallet.address,
-            signature: signature
+            walletAddress: wallet.address, // Gunakan alamat wallet yang baru dibuat
+            signature: signature           // Gunakan signature yang benar
         });
 
         console.log("---------------------------------------------------");

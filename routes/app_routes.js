@@ -674,9 +674,6 @@ router.delete('/agent/:agentId/resources/:resourceId', detachResourceFromAgent);
  *               signature:
  *                 type: string
  *                 description: The cryptographic signature of the nonce
- *               nonce:
- *                 type: string
- *                 description: Optional check for specific nonce reuse
  *     responses:
  *       200:
  *         description: Login successful
