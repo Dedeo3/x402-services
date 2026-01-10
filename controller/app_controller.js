@@ -1066,3 +1066,17 @@ export const listWrapped = async (req, res) => {
         return res.status(500).json({ message: "Internal Server Error" });
     }
 };
+
+export const listAiAgent = async (req, res) => {
+    try {
+        const wrapped = await prisma.aIAgents.findMany({
+          orderBy:{
+            createdAt:"desc"
+          }
+        });
+        return res.status(200).json(wrapped);
+    } catch (error) {
+        console.error("Error listing wrapped:", error);
+        return res.status(500).json({ message: "Internal Server Error" });
+    }
+};
