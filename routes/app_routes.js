@@ -1,5 +1,29 @@
-import express from 'express';
-import { registerCreator, loginVerify, nonce, getProfile, getCreatorAll, getCreatorWrapped, createWrapped, getPayroute, getPayrouteWithEscrow, createAgent, getCreatorAgents, getAgentDetails, createAgentResource, getCreatorResources, attachResourceToAgent, getAgentResources, detachResourceFromAgent, callAIChat, escrowCallAIChat } from '../controller/app_controller.js';
+import express from "express";
+import {
+  pinata,
+  listAiAgent,
+  listWrapped,
+  registerCreator,
+  loginVerify,
+  nonce,
+  getProfile,
+  getCreatorAll,
+  getCreatorWrapped,
+  createWrapped,
+  getPayroute,
+  getPayrouteWithEscrow,
+  createAgent,
+  getCreatorAgents,
+  getAgentDetails,
+  createAgentResource,
+  getCreatorResources,
+  attachResourceToAgent,
+  getAgentResources,
+  detachResourceFromAgent,
+  callAIChat,
+} from "../controller/app_controller.js";
+import multer from "multer";
+const upload = multer();
 
 const router = express.Router();
 
@@ -71,7 +95,7 @@ const router = express.Router();
  *       500:
  *         description: Server error
  */
-router.post('/creator/register', registerCreator);
+router.post("/creator/register", registerCreator);
 
 /**
  * @swagger
@@ -96,7 +120,7 @@ router.post('/creator/register', registerCreator);
  *       500:
  *         description: Server error
  */
-router.get('/creator/:id', getProfile)
+router.get("/creator/:id", getProfile);
 
 /**
  * @swagger
@@ -116,7 +140,7 @@ router.get('/creator/:id', getProfile)
  *       500:
  *         description: Server error
  */
-router.get('/creator/', getCreatorAll)
+router.get("/creator/", getCreatorAll);
 
 /**
  * @swagger
@@ -145,7 +169,7 @@ router.get('/creator/', getCreatorAll)
  *       500:
  *         description: Server error
  */
-router.get('/creator/wrapped/:idCreator', getCreatorWrapped)
+router.get("/creator/wrapped/:idCreator", getCreatorWrapped);
 // router.get('/creator/profile/:id', getCreatorProfile);
 
 /**
@@ -205,7 +229,7 @@ router.get('/creator/wrapped/:idCreator', getCreatorWrapped)
  *       500:
  *         description: Server error
  */
-router.post('/creator/wrapped/:creatorId', createWrapped)
+router.post("/creator/wrapped/:creatorId", createWrapped);
 
 // payment x402
 /**
@@ -284,8 +308,7 @@ router.post('/creator/wrapped/:creatorId', createWrapped)
  *       500:
  *         description: Server Error
  */
-router.all("/escrow/:gatewaySlug", getPayrouteWithEscrow)
-
+router.all("/escrow/:gatewaySlug", getPayrouteWithEscrow);
 
 /**
  * @swagger
@@ -363,15 +386,9 @@ router.all("/escrow/:gatewaySlug", getPayrouteWithEscrow)
  */
 router.all("/:gatewaySlug", getPayroute);
 
-
-
-
-
-
 // router.post('/creator/assets/:id/verify', verifyAssetsPayment);
 
 // router.get('/creator/find-by-wallet/:walletAddress', getProfileByWalletAddress);
-
 
 // Agent Management
 
@@ -441,8 +458,8 @@ router.all("/:gatewaySlug", getPayroute);
  *       500:
  *         description: Server error
  */
-router.post('/creator/:creatorId/agents', createAgent);
-router.get('/creator/:creatorId/agents', getCreatorAgents);
+router.post("/creator/:creatorId/agents", createAgent);
+router.get("/creator/:creatorId/agents", getCreatorAgents);
 
 /**
  * @swagger
@@ -465,7 +482,7 @@ router.get('/creator/:creatorId/agents', getCreatorAgents);
  *       500:
  *         description: Server error
  */
-router.get('/agent/:agentId', getAgentDetails);
+router.get("/agent/:agentId", getAgentDetails);
 
 /**
  * @swagger
@@ -510,7 +527,7 @@ router.get('/agent/:agentId', getAgentDetails);
  *       500:
  *         description: Server error
  */
-router.post('/agent/escrow/:agentSlug/chat', escrowCallAIChat);
+router.post("/agent/escrow/:agentSlug/chat", escrowCallAIChat);
 
 /**
  * @swagger
@@ -555,7 +572,7 @@ router.post('/agent/escrow/:agentSlug/chat', escrowCallAIChat);
  *       500:
  *         description: Server error
  */
-router.post('/agent/:agentSlug/chat', callAIChat);
+router.post("/agent/:agentSlug/chat", callAIChat);
 
 // Agent Resources
 /**
@@ -612,8 +629,8 @@ router.post('/agent/:agentSlug/chat', callAIChat);
  *       500:
  *         description: Server error
  */
-router.post('/creator/:creatorId/resources', createAgentResource);
-router.get('/creator/:creatorId/resources', getCreatorResources);
+router.post("/creator/:creatorId/resources", createAgentResource);
+router.get("/creator/:creatorId/resources", getCreatorResources);
 
 /**
  * @swagger
@@ -663,8 +680,8 @@ router.get('/creator/:creatorId/resources', getCreatorResources);
  *       500:
  *         description: Server error
  */
-router.post('/agent/:agentId/resources', attachResourceToAgent);
-router.get('/agent/:agentId/resources', getAgentResources);
+router.post("/agent/:agentId/resources", attachResourceToAgent);
+router.get("/agent/:agentId/resources", getAgentResources);
 
 /**
  * @swagger
@@ -693,7 +710,7 @@ router.get('/agent/:agentId/resources', getAgentResources);
  *       500:
  *         description: Server error
  */
-router.delete('/agent/:agentId/resources/:resourceId', detachResourceFromAgent);
+router.delete("/agent/:agentId/resources/:resourceId", detachResourceFromAgent);
 
 /**
  * @swagger
@@ -717,9 +734,6 @@ router.delete('/agent/:agentId/resources/:resourceId', detachResourceFromAgent);
  *               signature:
  *                 type: string
  *                 description: The cryptographic signature of the nonce
- *               nonce:
- *                 type: string
- *                 description: Optional check for specific nonce reuse
  *     responses:
  *       200:
  *         description: Login successful
@@ -743,7 +757,7 @@ router.delete('/agent/:agentId/resources/:resourceId', detachResourceFromAgent);
  *       500:
  *         description: Server error
  */
-router.post('/login/verify', loginVerify);
+router.post("/login/verify", loginVerify);
 
 /**
  * @swagger
@@ -780,6 +794,90 @@ router.post('/login/verify', loginVerify);
  *       500:
  *         description: Server error
  */
-router.post('/nonce/login', nonce);
+router.post("/nonce/login", nonce);
+
+/**
+ * @swagger
+ * /list/urlWrapped:
+ *   get:
+ *     summary: List all wrapped URLs
+ *     tags: [Creator]
+ *     responses:
+ *       200:
+ *         description: List of wrapped URLs and creator IDs.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   urlWrapped:
+ *                     type: string
+ *                   creatorId:
+ *                     type: integer
+ *       500:
+ *         description: Server error
+ */
+router.get("/list/urlWrapped", listWrapped);
+
+/**
+ * @swagger
+ * /list/ai-agent:
+ *   get:
+ *     summary: List all AI agents
+ *     tags: [Creator]
+ *     responses:
+ *       200:
+ *         description: List of AI agents and creator IDs.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   aiAgent:
+ *                     type: string
+ *                   creatorId:
+ *                     type: integer
+ *       500:
+ *         description: Server error
+ */
+router.get("/list/ai-agent", listAiAgent);
+
+/**
+ * @swagger
+ * /api/upload/image:
+ *   post:
+ *     summary: Upload an image to Pinata IPFS
+ *     tags: [Utils]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       200:
+ *         description: Image uploaded successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 url:
+ *                   type: string
+ *                   description: The IPFS URL of the uploaded image
+ *       400:
+ *         description: No file uploaded
+ *       500:
+ *         description: Server error
+ */
+router.post("/api/upload/image", upload.single("file"), pinata);
 
 export default router;
