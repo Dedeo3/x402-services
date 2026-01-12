@@ -1,7 +1,29 @@
-import express from 'express';
-import { pinata, listAiAgent, listWrapped, registerCreator, loginVerify, nonce, getProfile, getCreatorAll, getCreatorWrapped, createWrapped, getPayroute, getPayrouteWithEscrow, createAgent, getCreatorAgents, getAgentDetails, createAgentResource, getCreatorResources, attachResourceToAgent, getAgentResources, detachResourceFromAgent, callAIChat } from '../controller/app_controller.js';
-import multer from 'multer';
-const upload = multer()
+import express from "express";
+import {
+  pinata,
+  listAiAgent,
+  listWrapped,
+  registerCreator,
+  loginVerify,
+  nonce,
+  getProfile,
+  getCreatorAll,
+  getCreatorWrapped,
+  createWrapped,
+  getPayroute,
+  getPayrouteWithEscrow,
+  createAgent,
+  getCreatorAgents,
+  getAgentDetails,
+  createAgentResource,
+  getCreatorResources,
+  attachResourceToAgent,
+  getAgentResources,
+  detachResourceFromAgent,
+  callAIChat,
+} from "../controller/app_controller.js";
+import multer from "multer";
+const upload = multer();
 
 const router = express.Router();
 
@@ -73,7 +95,7 @@ const router = express.Router();
  *       500:
  *         description: Server error
  */
-router.post('/creator/register', registerCreator);
+router.post("/creator/register", registerCreator);
 
 /**
  * @swagger
@@ -98,7 +120,7 @@ router.post('/creator/register', registerCreator);
  *       500:
  *         description: Server error
  */
-router.get('/creator/:id', getProfile)
+router.get("/creator/:id", getProfile);
 
 /**
  * @swagger
@@ -118,7 +140,7 @@ router.get('/creator/:id', getProfile)
  *       500:
  *         description: Server error
  */
-router.get('/creator/', getCreatorAll)
+router.get("/creator/", getCreatorAll);
 
 /**
  * @swagger
@@ -147,7 +169,7 @@ router.get('/creator/', getCreatorAll)
  *       500:
  *         description: Server error
  */
-router.get('/creator/wrapped/:idCreator', getCreatorWrapped)
+router.get("/creator/wrapped/:idCreator", getCreatorWrapped);
 // router.get('/creator/profile/:id', getCreatorProfile);
 
 /**
@@ -207,7 +229,7 @@ router.get('/creator/wrapped/:idCreator', getCreatorWrapped)
  *       500:
  *         description: Server error
  */
-router.post('/creator/wrapped/:creatorId', createWrapped)
+router.post("/creator/wrapped/:creatorId", createWrapped);
 
 // payment x402
 /**
@@ -286,8 +308,7 @@ router.post('/creator/wrapped/:creatorId', createWrapped)
  *       500:
  *         description: Server Error
  */
-router.all("/escrow/:gatewaySlug", getPayrouteWithEscrow)
-
+router.all("/escrow/:gatewaySlug", getPayrouteWithEscrow);
 
 /**
  * @swagger
@@ -369,7 +390,6 @@ router.all("/:gatewaySlug", getPayroute);
 
 // router.get('/creator/find-by-wallet/:walletAddress', getProfileByWalletAddress);
 
-
 // Agent Management
 
 /**
@@ -438,8 +458,8 @@ router.all("/:gatewaySlug", getPayroute);
  *       500:
  *         description: Server error
  */
-router.post('/creator/:creatorId/agents', createAgent);
-router.get('/creator/:creatorId/agents', getCreatorAgents);
+router.post("/creator/:creatorId/agents", createAgent);
+router.get("/creator/:creatorId/agents", getCreatorAgents);
 
 /**
  * @swagger
@@ -462,20 +482,19 @@ router.get('/creator/:creatorId/agents', getCreatorAgents);
  *       500:
  *         description: Server error
  */
-router.get('/agent/:agentId', getAgentDetails);
+router.get("/agent/:agentId", getAgentDetails);
 
 /**
  * @swagger
- * /agent/{agentId}/chat:
+ * /agent/escrow/{agentSlug}/chat:
  *   post:
- *     summary: Chat with an AI Agent
- *     tags: [Agent]
+ *     summary: Chat with an AI Agent using escrow
+ *     tags: [Agent Escrow]
  *     parameters:
  *       - in: path
- *         name: agentId
+ *         name: agentSlug
  *         schema:
  *           type: string
- *           format: uuid
  *         required: true
  *       - in: header
  *         name: x-payment-tx
@@ -508,10 +527,54 @@ router.get('/agent/:agentId', getAgentDetails);
  *       500:
  *         description: Server error
  */
-router.post('/agent/:agentId/chat', callAIChat);
+router.post("/agent/escrow/:agentSlug/chat", escrowCallAIChat);
+
+/**
+ * @swagger
+ * /agent/{agentSlug}/chat:
+ *   post:
+ *     summary: Chat with an AI Agent
+ *     tags: [Agent]
+ *     parameters:
+ *       - in: path
+ *         name: agentSlug
+ *         schema:
+ *           type: string
+ *         required: true
+ *       - in: header
+ *         name: x-payment-tx
+ *         schema:
+ *           type: string
+ *         description: Direct Payment Transaction Hash (Bearer <txHash>)
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - message
+ *             properties:
+ *               message:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Chat response
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 response:
+ *                   type: string
+ *       400:
+ *         description: Missing message
+ *       500:
+ *         description: Server error
+ */
+router.post("/agent/:agentSlug/chat", callAIChat);
 
 // Agent Resources
-
 /**
  * @swagger
  * /creator/{creatorId}/resources:
@@ -566,8 +629,8 @@ router.post('/agent/:agentId/chat', callAIChat);
  *       500:
  *         description: Server error
  */
-router.post('/creator/:creatorId/resources', createAgentResource);
-router.get('/creator/:creatorId/resources', getCreatorResources);
+router.post("/creator/:creatorId/resources", createAgentResource);
+router.get("/creator/:creatorId/resources", getCreatorResources);
 
 /**
  * @swagger
@@ -617,8 +680,8 @@ router.get('/creator/:creatorId/resources', getCreatorResources);
  *       500:
  *         description: Server error
  */
-router.post('/agent/:agentId/resources', attachResourceToAgent);
-router.get('/agent/:agentId/resources', getAgentResources);
+router.post("/agent/:agentId/resources", attachResourceToAgent);
+router.get("/agent/:agentId/resources", getAgentResources);
 
 /**
  * @swagger
@@ -647,7 +710,7 @@ router.get('/agent/:agentId/resources', getAgentResources);
  *       500:
  *         description: Server error
  */
-router.delete('/agent/:agentId/resources/:resourceId', detachResourceFromAgent);
+router.delete("/agent/:agentId/resources/:resourceId", detachResourceFromAgent);
 
 /**
  * @swagger
@@ -694,7 +757,7 @@ router.delete('/agent/:agentId/resources/:resourceId', detachResourceFromAgent);
  *       500:
  *         description: Server error
  */
-router.post('/login/verify', loginVerify);
+router.post("/login/verify", loginVerify);
 
 /**
  * @swagger
@@ -731,7 +794,7 @@ router.post('/login/verify', loginVerify);
  *       500:
  *         description: Server error
  */
-router.post('/nonce/login', nonce);
+router.post("/nonce/login", nonce);
 
 /**
  * @swagger
@@ -756,7 +819,7 @@ router.post('/nonce/login', nonce);
  *       500:
  *         description: Server error
  */
-router.get('/list/urlWrapped', listWrapped)
+router.get("/list/urlWrapped", listWrapped);
 
 /**
  * @swagger
@@ -781,7 +844,7 @@ router.get('/list/urlWrapped', listWrapped)
  *       500:
  *         description: Server error
  */
-router.get('/list/ai-agent', listAiAgent)
+router.get("/list/ai-agent", listAiAgent);
 
 /**
  * @swagger
@@ -815,6 +878,6 @@ router.get('/list/ai-agent', listAiAgent)
  *       500:
  *         description: Server error
  */
-router.post('/api/upload/image', upload.single('file'), pinata)
+router.post("/api/upload/image", upload.single("file"), pinata);
 
 export default router;

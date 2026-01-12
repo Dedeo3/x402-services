@@ -1,5 +1,5 @@
 import { prisma } from "../util/prisma_config.js"
-import { ethers, keccak256, toUtf8Bytes } from "ethers";
+import { ethers, keccak256, toUtf8Bytes, NonceManager } from "ethers";
 import axios from "axios";
 import { chat } from "./agent_service.js";
 import FormData from "form-data";
@@ -330,7 +330,8 @@ export const getPayrouteWithEscrow = async (req, res) => {
             const privateKey = process.env.PRIVATE_KEY;
             const rpcUrl = process.env.MANTLE_TESTNET_RPC_URL;
             const provider = new ethers.JsonRpcProvider(rpcUrl);
-            const wallet = new ethers.Wallet(privateKey, provider);
+            const rawWallet = new ethers.Wallet(privateKey, provider);
+            const wallet = new NonceManager(rawWallet);
 
             // ABI for decoding createTx and calling finalize
             const escrowInterface = new ethers.Interface([
@@ -698,9 +699,9 @@ export const detachResourceFromAgent = async (req, res) => {
     }
 };
 
-export const callAIChat = async (req, res) => {
+export const escrowCallAIChat = async (req, res) => {
     try {
-        const { agentId } = req.params;
+        const { agentSlug } = req.params;
         const { message } = req.body;
 
         if (!message) {
@@ -709,7 +710,7 @@ export const callAIChat = async (req, res) => {
 
         // Fetch Agent details including creator for wallet address
         const agent = await prisma.aIAgents.findUnique({
-            where: { id: agentId },
+            where: { slug: agentSlug },
             include: { creator: true }
         });
 
@@ -737,7 +738,8 @@ export const callAIChat = async (req, res) => {
                 const privateKey = process.env.PRIVATE_KEY;
                 const rpcUrl = process.env.MANTLE_TESTNET_RPC_URL;
                 const provider = new ethers.JsonRpcProvider(rpcUrl);
-                const wallet = new ethers.Wallet(privateKey, provider);
+                const rawWallet = new ethers.Wallet(privateKey, provider);
+                const wallet = new NonceManager(rawWallet);
 
                 // ABI for decoding createTx and calling finalize
                 const escrowInterface = new ethers.Interface([
@@ -819,7 +821,7 @@ export const callAIChat = async (req, res) => {
                 try {
                     // Fetch Agent Resources
                     const maps = await prisma.agentResourceMap.findMany({
-                        where: { agentId: agentId },
+                        where: { agentId: agent.id },
                         include: {
                             resource: true
                         }
@@ -947,7 +949,7 @@ export const callAIChat = async (req, res) => {
             // Free agent logic
             // Fetch Agent Resources
             const maps = await prisma.agentResourceMap.findMany({
-                where: { agentId: agentId },
+                where: { agentId: agent.id },
                 include: {
                     resource: true
                 }
@@ -978,6 +980,211 @@ export const callAIChat = async (req, res) => {
         return res.status(500).json({ error: "Internal Server Error" });
     }
 }
+
+export const callAIChat = async (req, res) => {
+    try {
+        const { agentSlug } = req.params;
+        const { message } = req.body;
+
+        if (!message) {
+            return res.status(400).json({ error: "Message is required" });
+        }
+
+        // Fetch Agent details including creator for wallet address
+        const agent = await prisma.aIAgents.findUnique({
+            where: { slug: agentSlug },
+            include: { creator: true }
+        });
+
+        if (!agent) {
+            return res.status(404).json({ error: "Agent not found" });
+        }
+
+        const pricePerHit = agent.pricePerHit;
+        const paymentReceipt = agent.creator.walletAddress;
+
+        if (pricePerHit > 0) {
+            const paymentTx = req.headers['x-payment-tx'];
+
+            if (paymentTx) {
+                const txHash = paymentTx.replace('Bearer ', '');
+
+                // Onchain Verification
+                const musdAddress = process.env.MUSD_ADDRESS;
+                const rpcUrl = process.env.MANTLE_TESTNET_RPC_URL;
+                const provider = new ethers.JsonRpcProvider(rpcUrl);
+
+                try {
+                    const tx = await provider.getTransaction(txHash);
+
+                    if (!tx) {
+                        return res.status(402).json({ message: "Transaction not found" });
+                    }
+
+                    if (!tx.blockNumber) {
+                        return res.status(402).json({ message: "Transaction pending" });
+                    }
+
+                    // Verify Interaction with MUSD Contract
+                    if (tx.to.toLowerCase() !== musdAddress.toLowerCase()) {
+                        return res.status(402).json({
+                            message: "Transaction is not to MUSD contract",
+                            expected: musdAddress,
+                            received: tx.to
+                        });
+                    }
+
+                    // Decode ERC20 Transfer
+                    const erc20Interface = new ethers.Interface([
+                        "function transfer(address to, uint256 amount)"
+                    ]);
+
+                    let decodedData;
+                    try {
+                        decodedData = erc20Interface.decodeFunctionData("transfer", tx.data);
+                    } catch (err) {
+                        return res.status(402).json({ message: "Invalid transaction data (not transfer)" });
+                    }
+
+                    const recipient = decodedData[0];
+                    const amount = decodedData[1];
+
+                    // Verify Recipient
+                    if (recipient.toLowerCase() !== paymentReceipt.toLowerCase()) {
+                        return res.status(402).json({
+                            message: "Invalid payment recipient",
+                            expected: paymentReceipt,
+                            received: recipient
+                        });
+                    }
+
+                    // Verify Amount
+                    const expectedAmount = ethers.parseUnits(pricePerHit.toString(), 6);
+
+                    if (amount < expectedAmount) {
+                        return res.status(402).json({
+                            message: "Insufficient payment amount",
+                            expected: pricePerHit.toString(),
+                            received: ethers.formatUnits(amount, 6)
+                        });
+                    }
+
+                } catch (error) {
+                    console.error("Verification error:", error);
+                    return res.status(402).json({ message: "Payment verification failed" });
+                }
+
+                // --- Payment Verified: Execute AI Chat ---
+                try {
+                     // Fetch Agent Resources
+                     const maps = await prisma.agentResourceMap.findMany({
+                        where: { agentId: agent.id },
+                        include: {
+                            resource: true
+                        }
+                    });
+
+                    const resources = maps.map(m => m.resource);
+
+                    // Construct Prompt
+                    let finalPrompt = "";
+
+                    // 1. Add System Prompt
+                    if (agent.systemPrompt) {
+                        finalPrompt += `System Prompt: ${agent.systemPrompt}\n\n`;
+                    }
+
+                    // 2. Add Resources Context
+                    if (resources.length > 0) {
+                        const context = resources.map(r => `Title: ${r.title}\nContent: ${r.content}`).join("\n\n");
+                        finalPrompt += `Context information is below.\n---------------------\n${context}\n---------------------\nGiven the context information and not prior knowledge, answer the query.\n`;
+                    }
+
+                    // 3. Add User Message
+                    finalPrompt += `Query: ${message}`;
+
+                    const response = await chat(finalPrompt);
+
+                    return res.status(200).json({ response });
+
+                } catch (error) {
+                    console.error("AI Generation error:", error);
+                    return res.status(500).json({ error: "AI Processing Failed" });
+                }
+
+            } else {
+                // --- 402 Payment Required ---
+                
+                // Create transaction record for reference/pending status
+                 let dbTx;
+                 const txId = keccak256(
+                     toUtf8Bytes(
+                         `${paymentReceipt}-${agentSlug}-${pricePerHit}-${Date.now()}`
+                     )
+                 );
+ 
+                 try {
+                     dbTx = await prisma.transactions.create({
+                         data: {
+                             id: txId,
+                             creatorWallet: paymentReceipt,
+                             gatewaySlug: agentSlug,
+                             amount: pricePerHit,
+                             status: "PENDING"
+                         }
+                     });
+                 } catch (dbError) {
+                     console.error("Error saving transaction to DB:", dbError);
+                     return res.status(500).json({
+                         message: "Internal Server Error",
+                     });
+                 }
+
+                return res.status(402).json({
+                    message: "Payment Required",
+                    receiverAddress: paymentReceipt,
+                    transactionId: dbTx.id,
+                    amount: pricePerHit,
+                    currency: "MUSD",
+                    chain: "MANTLE TESTNET",
+                    requiredHeader: "x-payment-tx"
+                });
+            }
+
+        } else {
+            // Free Agent Logic
+            const maps = await prisma.agentResourceMap.findMany({
+                where: { agentId: agent.id },
+                include: {
+                    resource: true
+                }
+            });
+
+            const resources = maps.map(m => m.resource);
+
+            let finalPrompt = "";
+
+            if (agent.systemPrompt) {
+                finalPrompt += `System Prompt: ${agent.systemPrompt}\n\n`;
+            }
+
+            if (resources.length > 0) {
+                const context = resources.map(r => `Title: ${r.title}\nContent: ${r.content}`).join("\n\n");
+                finalPrompt += `Context information is below.\n---------------------\n${context}\n---------------------\nGiven the context information and not prior knowledge, answer the query.\n`;
+            }
+
+            finalPrompt += `Query: ${message}`;
+
+            const response = await chat(finalPrompt);
+            return res.status(200).json({ response });
+        }
+
+    } catch (error) {
+        console.error("Error in callAIChat:", error);
+        return res.status(500).json({ error: "Internal Server Error" });
+    }
+}
+
 
 // Login & Verify
 export const nonce = async (req, res) => {
